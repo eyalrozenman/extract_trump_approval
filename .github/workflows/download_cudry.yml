@@ -25,15 +25,19 @@ jobs:
           CUDRY_BASE: https://datawrapper.dwcdn.net/CuDry
         run: |
           set -euo pipefail
+          set -x
           mkdir -p data/cudry
 
           stamp=$(date -u +%Y-%m-%d)
           raw_path="data/cudry/cudry_${stamp}.csv"
           processed_path="data/cudry/cudry_${stamp}_extracted.csv"
 
+          curl_opts=(-sSL -A "Mozilla/5.0")
+
           # Extract latest published version from the landing page (meta refresh)
-          html=$(curl -sSL "$CUDRY_BASE/")
-          version=$(printf "%s" "$html" | grep -io 'CuDry/[0-9]\\+/' | head -n1 | sed 's#CuDry/\\([0-9]\\+\\)/#\\1#')
+          html=$(curl "${curl_opts[@]}" "$CUDRY_BASE/")
+          version=$(printf "%s" "$html" | tr '[:upper:]' '[:lower:]' | grep -o 'cudry/[0-9]\\+/' | head -n1 | sed 's#cudry/\\([0-9]\\+\\)/#\\1#')
+          echo "Detected version: ${version:-<none>}"
 
           if [ -z "$version" ]; then
             echo "Could not determine CuDry version from $CUDRY_BASE/" >&2
@@ -44,8 +48,8 @@ jobs:
 
           src_url="$CUDRY_BASE/$version/data.csv"
           echo "Downloading CuDry version $version from $src_url"
-          curl -L --fail --retry 3 "$src_url" -o "$raw_path"
-          python extract_cudry.py "$raw_path" "$processed_path"
+          curl -L --fail --retry 3 -A "Mozilla/5.0" "$src_url" -o "$raw_path"
+          python3 extract_cudry.py "$raw_path" "$processed_path"
 
           echo "STAMP=$stamp" >> "$GITHUB_ENV"
           echo "RAW_PATH=$raw_path" >> "$GITHUB_ENV"
