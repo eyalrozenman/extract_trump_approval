@@ -2,8 +2,7 @@ name: Daily CuDry download
 
 on:
   schedule:
-    # 06:15 UTC every day
-    - cron: "15 6 * * *"
+    - cron: "15 18 * * *"
   workflow_dispatch:
 
 permissions:
