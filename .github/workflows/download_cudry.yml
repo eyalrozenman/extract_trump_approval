@@ -1,0 +1,70 @@
+name: Daily CuDry download
+
+on:
+  schedule:
+    # 06:15 UTC every day
+    - cron: "15 6 * * *"
+  workflow_dispatch:
+
+permissions:
+  actions: write
+  contents: write
+
+jobs:
+  download:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Fetch latest CuDry CSV
+        env:
+          CUDRY_BASE: https://datawrapper.dwcdn.net/CuDry
+        run: |
+          set -euo pipefail
+          mkdir -p data/cudry
+
+          stamp=$(date -u +%Y-%m-%d)
+          raw_path="data/cudry/cudry_${stamp}.csv"
+          processed_path="data/cudry/cudry_${stamp}_extracted.csv"
+
+          html=$(curl -sSL "$CUDRY_BASE/")
+          version=$(printf "%s" "$html" | grep -o 'CuDry/[0-9]\\+/' | head -n1 | sed 's#CuDry/\\([0-9]\\+\\)/#\\1#')
+          if [ -z "$version" ]; then
+            echo "Could not determine CuDry version from $CUDRY_BASE/" >&2
+            exit 1
+          fi
+
+          src_url="$CUDRY_BASE/$version/data.csv"
+          echo "Downloading CuDry version $version from $src_url"
+          curl -L --fail --retry 3 "$src_url" -o "$raw_path"
+          python extract_cudry.py "$raw_path" "$processed_path"
+
+          echo "STAMP=$stamp" >> "$GITHUB_ENV"
+          echo "RAW_PATH=$raw_path" >> "$GITHUB_ENV"
+          echo "PROCESSED_PATH=$processed_path" >> "$GITHUB_ENV"
+
+      - name: Commit new snapshots
+        run: |
+          set -euo pipefail
+          if [ -n "$(git status --porcelain)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add "$RAW_PATH" "$PROCESSED_PATH"
+            git commit -m "chore: CuDry snapshot $STAMP"
+            git push
+          else
+            echo "Nothing new to commit."
+          fi
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: CuDry-${{ env.STAMP }}
+          path: |
+            ${{ env.RAW_PATH }}
+            ${{ env.PROCESSED_PATH }}
