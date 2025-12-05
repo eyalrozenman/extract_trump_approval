@@ -31,10 +31,14 @@ jobs:
           raw_path="data/cudry/cudry_${stamp}.csv"
           processed_path="data/cudry/cudry_${stamp}_extracted.csv"
 
+          # Extract latest published version from the landing page (meta refresh)
           html=$(curl -sSL "$CUDRY_BASE/")
-          version=$(printf "%s" "$html" | grep -o 'CuDry/[0-9]\\+/' | head -n1 | sed 's#CuDry/\\([0-9]\\+\\)/#\\1#')
+          version=$(printf "%s" "$html" | grep -io 'CuDry/[0-9]\\+/' | head -n1 | sed 's#CuDry/\\([0-9]\\+\\)/#\\1#')
+
           if [ -z "$version" ]; then
             echo "Could not determine CuDry version from $CUDRY_BASE/" >&2
+            echo "HTML snippet:" >&2
+            printf '%s\n' "$html" | head -n 20 >&2
             exit 1
           fi
 
