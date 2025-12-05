@@ -36,7 +36,7 @@ jobs:
 
           # Extract latest published version from the landing page (meta refresh)
           html=$(curl "${curl_opts[@]}" "$CUDRY_BASE/")
-          version=$(printf "%s" "$html" | tr '[:upper:]' '[:lower:]' | grep -o 'cudry/[0-9]\\+/' | head -n1 | sed 's#cudry/\\([0-9]\\+\\)/#\\1#')
+          version=$(printf "%s" "$html" | sed -n 's#.*cudry/\([0-9][0-9]*\)/.*#\1#Ip' | head -n1)
           echo "Detected version: ${version:-<none>}"
 
           if [ -z "$version" ]; then
