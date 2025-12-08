@@ -7,7 +7,7 @@ on:
 
 permissions:
   actions: write
-  contents: write
+  contents: read   # no need for write anymore
 
 jobs:
   download:
@@ -55,19 +55,7 @@ jobs:
           echo "RAW_PATH=$raw_path" >> "$GITHUB_ENV"
           echo "PROCESSED_PATH=$processed_path" >> "$GITHUB_ENV"
 
-      - name: Commit new snapshots
-        run: |
-          set -euo pipefail
-          if [ -n "$(git status --porcelain)" ]; then
-            git config user.name "github-actions[bot]"
-            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-            git add "$RAW_PATH" "$PROCESSED_PATH"
-            git commit -m "chore: CuDry snapshot $STAMP"
-            git push
-          else
-            echo "Nothing new to commit."
-          fi
-
+      # ⬇️ Only artifacts, no git commit
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
